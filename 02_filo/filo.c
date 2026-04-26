@@ -36,7 +36,7 @@ static int insertElement(int value) {
 	}
 
 	// we make our new node the new current node and set its value and next variable
-	// the new node then becomes the new list_head so that we have a FiLa structure and can easily remove the last added element in our remove method
+	// the new node then becomes the new list_head so that we have a FiLo structure and can easily remove the last added element in our remove method
 	new_node->next = list_head;
 	new_node->value = value;
 	list_head = new_node;
