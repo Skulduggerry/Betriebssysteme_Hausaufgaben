@@ -3,159 +3,272 @@
 #include <string.h>
 #include <time.h>
 
+typedef struct String {
+    char *data;
+    int len; // the length of the string without the \0
+    int capacity; // the total capacity of the string
+} string_t;
+
 typedef struct StringArray {
-    char **data;
+    string_t *data;
     int len;
     int capacity;
 } string_array_t;
 
-#define STRING_BUFFER_LEN 102 // the maximum length of a word + \n + \0
-
-// grows the array size by a factor of 2 if it is full
-void grow_if_needed(string_array_t *array) {
-    if (array->len > array->capacity) {
-        // if we reach this we did something horribly wrong
-        exit(EXIT_FAILURE);
-    }
-
-    if (array->len != array->capacity) {
-        // no growing is required since len < capacity
+// initialize a string with a given capacity
+// does nothing if the string is already initialized
+void string_init(string_t *string, int capacity) {
+    if (string->data != NULL) {
         return;
     }
 
-    // grow the array size by a factor of 2 since it is full
-    char **tmp = realloc(array->data, array->capacity * 2 * sizeof(char *));
-    if (NULL == tmp) {
-        perror("realloc");
-        exit(EXIT_FAILURE);
-    }
-    array->data = tmp;
-    array->capacity *= 2;
-}
-
-string_array_t read_file(void) {
-    // create an array with enough space for 16 strings
-    string_array_t array = {.data = NULL, .len = 0, .capacity = 16};
-    array.data = malloc(16 * sizeof(char *));
-    if (NULL == array.data) {
+    string->len = 0;
+    string->capacity = capacity;
+    string->data = malloc(sizeof(char) * capacity);
+    if (NULL == string->data) {
         perror("malloc");
         exit(EXIT_FAILURE);
     }
+}
 
-    // read all strings from stdin
-    while (1) {
-        // create space for the word
-        char *word_start = malloc(STRING_BUFFER_LEN * sizeof(char));
-        if (NULL == word_start) {
-            perror("malloc");
-            exit(1);
-        }
-
-        // read the word
-        if (NULL == fgets(word_start, STRING_BUFFER_LEN, stdin)) {
-            if (feof(stdin)) {
-                // nothing was read because we reached the end
-                // we can free the memory for the string and break our loop
-                free(word_start);
-                break;
-            }
-
-            if (ferror(stdin)) {
-                // an error occurred during the read
-                // we print an error message and exit (no error handling for the error handling)
-                fprintf(stderr, "Could not read from stdin!");
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        // we calculate the word length
-        // if the word ended with '\n' the length is the distance between word_start and the '\n'
-        // otherwise the word is not finished or reading stopped because of EOF and we calculate the length with strlen
-        char *word_end = strchr(word_start, '\n');
-        int word_len = word_end != NULL ? word_end - word_start : strlen(word_start);
-
-        // if the word has length 0 (empty line) we can free the memory and continue reading in the next line
-        if (word_len == 0) {
-            free(word_start);
-            continue;
-        }
-
-        // if the word length was more than 100 we read until we reached the end of the line
-        if (word_len > 100) {
-            // print message for the user
-            fprintf(stderr, "Wort zu lang...ignoriere\n");
-
-            // read until we reach the end of line
-            while (fgets(word_start, STRING_BUFFER_LEN, stdin) != NULL) {
-                // check if we reached the end of the line and quit
-                if (strchr(word_start, '\n') != NULL) {
-                    break;
-                }
-            }
-
-            // we ended because of EOF so we free the string (it was too long) and can stop reading so we quit the loop
-            if (feof(stdin)) {
-                free(word_start);
-                break;
-            }
-
-            // an error occurred during the read
-            // we print an error message and exit (no error handling for the error handling)
-            if (ferror(stdin)) {
-                fprintf(stderr, "Could not read from stdin!");
-                exit(EXIT_FAILURE);
-            }
-
-            // we reached the end of the word without a problem
-            // we free the buffer since the word was to long and continue with the next line
-            free(word_start);
-            continue;
-        }
-
-        // we found a valid word and now have to add it
-        if (NULL != word_end) {
-            // the word ended with a '\n'
-            // we replace this with a '\0' to not have two new lines in our output
-            *word_end = '\0';
-        }
-
-        // we grow the array if needed and add the string to its entries
-        grow_if_needed(&array);
-        array.data[array.len++] = word_start;
+// grow the buffer size of a string by a factor of 2
+// does nothing if the string is uninitialized
+void string_grow(string_t *string) {
+    if (NULL == string->data) {
+        return;
     }
 
-    return array;
+    string->data = realloc(string->data, string->capacity * 2 * sizeof(char));
+    if (NULL == string->data) {
+        perror("realloc");
+        exit(EXIT_FAILURE);
+    }
+    string->capacity *= 2;
+}
+
+void string_free(string_t *string) {
+    free(string->data);
+    string->data = NULL;
+    string->len = 0;
+    string->capacity = 0;
+}
+
+// initialize a string array with a given capacity
+// does nothing if the array is already initialized
+void string_array_init(string_array_t *array, int capacity) {
+    if (array->data != NULL) {
+        return;
+    }
+
+    array->len = 0;
+    array->capacity = capacity;
+    array->data = malloc(sizeof(string_t) * capacity);
+    if (NULL == array->data) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+}
+
+// grow the buffer size of a string array by a factor of 2
+// does nothing if the array is uninitialized
+void string_array_grow(string_array_t *array) {
+    if (NULL == array->data) {
+        return;
+    }
+
+    array->data = realloc(array->data, array->capacity * 2 * sizeof(string_t));
+    if (NULL == array->data) {
+        perror("realloc");
+        exit(EXIT_FAILURE);
+    }
+    array->capacity *= 2;
+}
+
+// the string array takes ownership of the string
+// this means it steal all attributes from string and puts it into an uninitialized state
+void string_array_add(string_array_t *array, string_t *string) {
+    if (NULL == array->data || NULL == string->data) {
+        return;
+    }
+
+    // grow the array if it is full
+    // it should never happen that len > capacity
+    // for simplicity and since I am the only one ever touching this code I will omit error handling
+    if (array->len == array->capacity) {
+        string_array_grow(array);
+    }
+
+    // copy all data from string into the array
+    array->data[array->len].data = string->data;
+    array->data[array->len].len = string->len;
+    array->data[array->len].capacity = string->capacity;
+    array->len++;
+
+    // put the string into an uninitialized state
+    string->data = NULL;
+    string->len = 0;
+    string->capacity = 0;
+}
+
+void string_array_free(string_array_t *array) {
+    // first free all strings
+    for (int i = 0; i < array->len; i++) {
+        string_free(&array->data[i]);
+    }
+
+    // the free the
+    free(array->data);
+    array->len = 0;
+    array->capacity = 0;
+}
+
+// returns the word length of a string
+// that means the number of characters excluding \n and \0
+// an uninitialized string return -1
+int string_word_length(string_t *string) {
+    if (NULL == string->data) {
+        return -1;
+    }
+    return string->data[string->len - 1] == '\n' ? string->len - 1 : string->len;
+}
+
+// removes a \n at the end of a string
+// does nothing if string is uninitialized
+void string_remove_newline(string_t *string) {
+    if (NULL == string->data) {
+        return;
+    }
+
+    // set the first character after the word to '\0'
+    // if there was no \n nothing happens
+    // otherwise the '\n' is replaced
+    int word_length = string_word_length(string);
+    string->data[word_length] = '\0';
+
+    // in case there was a '\n' we have to shorten the string size by 1 because we deleted one character from the string
+    if (string->len != word_length) {
+        string->len -= 1;
+    }
+}
+
+// this function reads a full line as a string from stdin
+// the function returns the string that was given in or NULL if we reached EOF
+// the string that is passed in might be uninitialized in which case it will be initialized by the function
+// any previous content of the string will be overridden
+string_t *read_line(string_t *string) {
+    // initialize the string or set it's sice to zero to override previous content
+    string->len = 0;
+    string_init(string, 16);
+
+    while (1) {
+        // we start writing into the start at offset len
+        // this overrides the \0 of previous iterations since the length of the string exclude the \0 while preserving all other content
+        char *start = string->data + string->len;
+
+        // we now read into the string
+        // the amount of space we have left is the capacity minus the length of the string
+        char *result = fgets(start, string->capacity - string->len, stdin);
+
+        // we check the result of fgets
+        if (NULL == result) {
+            if (feof(stdin)) {
+                // we reached EOF so we can stop reading
+                break;
+            }
+
+            if (ferror(stdin)) {
+                // an error occurred and we quit the program
+                perror("fgets");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        // the new string length is the old string length plus the amount of characters that we read
+        string->len += strlen(start);
+
+        // if the string was not fully filled which means that capacity and len differ be more then 1 (remember len
+        // excludes the \0 while capacity does not) we reached an end in the form if EOF or a new line
+        // in case they differ by exactly one we check the last character of it was a \n which means that we also stop reading
+        if (string->capacity - string->len > 1 || string->data[string->len - 1] == '\n') {
+            break;
+        }
+
+        // the string capacity is fully filled up so we grow the string size and repeat the loop
+        string_grow(string);
+    }
+
+    // if the string length was 0 we read nothing so we return NULL to indicate that we reached EOF
+    // otherwise we return the string to indicate that we read something
+    if (string->len == 0) {
+        string_free(string); // we free the string as we did not read anything
+        return NULL;
+    }
+    return string;
+}
+
+// this functions reads all lines from stdin
+// it does not contain any empty lines or lines with a word sice of more than 100
+// the array that is passed in might be uninitialized in which case it will be initialized by the function
+// any previous content of the array will be overridden
+void read_file(string_array_t *array) {
+    // initialize the string or set it's sice to zero to override previous content
+    array->len = 0;
+    string_array_init(array, 16);
+
+    while (1) {
+        string_t string = {.data = NULL, .len = 0, .capacity = 0};
+        string_t *result = read_line(&string);
+        if (NULL == result) {
+            return;
+        }
+
+        string_remove_newline(&string);
+
+        if (string.len == 0) {
+            string_free(&string);
+            continue;
+        }
+
+        if (string.len > 100) {
+            string_free(&string);
+            if (fprintf(stderr, "Wort zu lang...ignoriere\n") < 0) {
+                perror("fprintf");
+                exit(EXIT_FAILURE);
+            }
+            continue;
+        }
+
+        string_array_add(array, &string);
+    }
 }
 
 int cmp(const void *a, const void *b) {
-    const char **x = (const char **) a;
-    const char **y = (const char **) b;
-    return strcmp(*x, *y);
+    const string_t *x = a;
+    const string_t *y = b;
+    return strcmp(x->data, y->data);
 }
 
 int main(void) {
     // read all lines from stdin and sort them
-    string_array_t array = read_file();
-    qsort(array.data, array.len, sizeof(char *), cmp);
+    string_array_t array = {.data = NULL, .len = 0, .capacity = 0};
+    read_file(&array);
+
+    qsort(array.data, array.len, sizeof(string_t), cmp);
 
     // print out all strings in sorted order
     for (int i = 0; i < array.len; i++) {
-        if (printf("%s\n", array.data[i]) < 0) {
+        if (printf("%s\n", array.data[i].data) < 0) {
             perror("printf");
             exit(EXIT_FAILURE);
         }
     }
 
-    if(EOF == fflush(stdout)) {
+    if (EOF == fflush(stdout)) {
         perror("fflush");
         exit(EXIT_FAILURE);
     }
 
-    // we first free all strings and then the string array
-    for (int i = 0; i < array.len; i++) {
-        free(array.data[i]);
-    }
-    free(array.data);
+    string_array_free(&array);
 
     return EXIT_SUCCESS;
 }
