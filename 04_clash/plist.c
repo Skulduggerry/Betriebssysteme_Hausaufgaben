@@ -17,8 +17,11 @@ struct queue_element {
 
 static struct queue_element *head;
 
-void walkList(bool (*callback) (pid_t, const char *)) {
-	// TODO: implement me
+void walkList(bool (*callback)(pid_t, const char *)) {
+	struct queue_element *current = head;
+	while (current && !callback(current->pid, current->cmdLine)) {
+		current = current->next;
+	}
 }
 
 int insertElement(pid_t pid, const char *cmdLine) {
@@ -45,7 +48,7 @@ int insertElement(pid_t pid, const char *cmdLine) {
 		return -2;
 	}
 
-	current->pid  = pid;
+	current->pid = pid;
 	current->next = NULL;
 
 	/* Einhängen des neuen Elements */
@@ -76,9 +79,9 @@ int removeElement(pid_t pid, char *buf, size_t buflen) {
 
 			strncpy(buf, current->cmdLine, buflen);
 			if (buflen > 0) {
-				buf[buflen-1]='\0';
+				buf[buflen - 1] = '\0';
 			}
-			int retVal = (int)strlen(current->cmdLine);
+			int retVal = (int) strlen(current->cmdLine);
 
 			/* Speicher freigeben */
 			free(current->cmdLine);
