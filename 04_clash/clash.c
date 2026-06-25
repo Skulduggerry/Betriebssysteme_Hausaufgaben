@@ -321,8 +321,8 @@ int main(void) {
         if (strcmp(array.data[0], "jobs") == 0) {
             if (array.len != 2) {
                 // array is not: jobs + NULL
-                if (printf("usage: cd <directory>\n") < 0) {
-                    perror("printf");
+                if (fprintf(stderr, "usage: jobs\n") < 0) {
+                    perror("fprintf");
                     exit(EXIT_FAILURE);
                 }
             } else {
@@ -338,11 +338,12 @@ int main(void) {
         if (strcmp(array.data[0], "cd") == 0) {
             if (array.len != 3) {
                 // array is not: cd +  <directory> + NULL
-                if (printf("usage: cd <directory>\n") < 0) {
-                    perror("printf");
+                if (fprintf(stderr, "usage: cd <directory>\n") < 0) {
+                    perror("fprintf");
                     exit(EXIT_FAILURE);
                 }
             } else {
+                // TODO: missing error handling
                 chdir(array.data[1]);
             }
             string_free(&user_input);
