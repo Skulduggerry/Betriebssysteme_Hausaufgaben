@@ -321,8 +321,8 @@ int main(void) {
         if (strcmp(array.data[0], "jobs") == 0) {
             if (array.len != 2) {
                 // array is not: jobs + NULL
-                if (printf("usage: cd <directory>\n") < 0) {
-                    perror("printf");
+                if (fprintf(stderr, "usage: jobs\n") < 0) {
+                    perror("fprintf");
                     exit(EXIT_FAILURE);
                 }
             } else {
@@ -338,12 +338,17 @@ int main(void) {
         if (strcmp(array.data[0], "cd") == 0) {
             if (array.len != 3) {
                 // array is not: cd +  <directory> + NULL
-                if (printf("usage: cd <directory>\n") < 0) {
-                    perror("printf");
+                if (fprintf(stderr, "usage: cd <directory>\n") < 0) {
+                    perror("fprintf");
                     exit(EXIT_FAILURE);
                 }
             } else {
-                chdir(array.data[1]);
+                if(chdir(array.data[1]) != 0) {
+                    if(fprintf(stderr, "Failed to change dir. Path might not exist!") < 0) {
+                        perror("fprintf");
+                        exit(EXIST_FAILURE);
+                    }
+                }
             }
             string_free(&user_input);
             string_array_free(&array);
@@ -400,9 +405,11 @@ int main(void) {
             }
 
             // print the exit status
-            if (printf("Exitstatus [%s] = %d\n", childCmd.data, WEXITSTATUS(status)) < 0) {
-                perror("printf");
-                exit(EXIT_FAILURE);
+            if (WIFEXISTED(status)) {
+                if (printf("Exitstatus [%s] = %d\n", childCmd.data, WEXITSTATUS(status)) < 0) {
+                    perror("printf");
+                    exit(EXIT_FAILURE);
+                }
             }
 
             // free the buffer
