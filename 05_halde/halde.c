@@ -73,7 +73,8 @@ void *malloc(size_t size) {
 
 		head = (struct mblock *) memory; // the head points to the beginning of the memory
 		head->next = NULL; // there is no next memory segment
-		head->size = sizeof(memory) - sizeof(struct mblock); // from the total memory we need some for storing mblock information
+		// from the total memory we need some for storing mblock information
+		head->size = sizeof(memory) - sizeof(struct mblock);
 	}
 
 	// search for a memory segment that is large enough
