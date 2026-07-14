@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
 
 	// malloc everything: list should be empty
 	char *all = malloc(1024*1024 - 16);
+	assert(all != NULL);
 	memset(all, 1, 1024*1024 - 16); // initialize the entire memory with ones so we can check calloc later
 	printList();
 	free(all);

@@ -73,8 +73,8 @@ void *malloc(size_t size) {
 
 		head = (struct mblock *) memory; // the head points to the beginning of the memory
 		head->next = NULL; // there is no next memory segment
-		head->size = sizeof(memory) - sizeof(struct mblock);
 		// from the total memory we need some for storing mblock information
+		head->size = sizeof(memory) - sizeof(struct mblock);
 	}
 
 	// search for a memory segment that is large enough
@@ -132,14 +132,14 @@ void free(void *ptr) {
 	// get access to the mblock
 	// it startes 16 bytes (=sizeof(mblock)) before the pointer the user provides so we cast the void* to an mblock* and subtract 1 to go sizeof(mblock) bytes back
 	// this works because the VLA memory in mblock has size 0
-	struct mblock *block = ((struct mblock *) ptr) - 1;
+	struct mblock *block = (struct mblock *) ptr - 1;
 
 	if (block->next != (struct mblock *) MAGIC) {
 		// something wrote over the magic value -> this is a error created by the user
 		abort();
 	}
 
-	block -> next = head;
+	block->next = head;
 	head = block;
 }
 
