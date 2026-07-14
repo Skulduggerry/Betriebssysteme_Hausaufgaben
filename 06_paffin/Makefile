@@ -1,5 +1,5 @@
 CC      = gcc
-CFLAGS  = -std=c11 -pedantic -D_XOPEN_SOURCE=700 -Wall -Werror -pthread
+CFLAGS  = -std=c11 -pedantic -D_XOPEN_SOURCE=700 -Wall -Werror -pthread -Og -g
 LDFLAGS = -pthread
 RM      = rm -f
 
